@@ -14,23 +14,23 @@ d$age <- d$age_group
 d$age[d$age >= 5] <- 4.99 # rounding error in the anonymization process
 
 md <- melt(d, id.vars=c("SID","age","expt"),
-           measure.vars=names(d)[grepl("ambig",names(d)) | 
+           measure.vars=names(d)[grepl("ambig",names(d)) |
                                    grepl("inference",names(d))],
            value.name = "correct")
-             
+
 md$trial <- as.numeric(str_sub(md$variable,2,2))
 md$trial.type <- c("filler","inference")[as.numeric(grepl("inference",md$variable))+1]
 
-# reverse disambiguation responses 
-# the disambiguation "inference" trials are coded as correct when 
+# reverse disambiguation responses
+# the disambiguation "inference" trials are coded as correct when
 md$correct[md$expt=="disambiguation" & md$trial.type=="inference"] <- 1 - md$correct[md$expt=="disambiguation" & md$trial.type=="inference"]
 
 mss <- aggregate(correct ~ trial.type + expt + age + SID,
                  md, mean)
 mss$age_group <- factor(floor(mss$age))
 
-ms <- ddply(mss, .(trial.type,expt,age_group), 
-            summarise,          
+ms <- ddply(mss, .(trial.type,expt,age_group),
+            summarise,
             cil = ci.low(correct),
             cih = ci.high(correct),
             n = length(correct),
@@ -39,13 +39,15 @@ ms <- ddply(mss, .(trial.type,expt,age_group),
             correct = mean(correct))
 
 #quartz()
-qplot(age_group, correct, fill = trial.type,
-      stat="identity",
-      position=position_dodge(.9),
-      ymin=correct-cil, ymax=correct+cih,
-      data=ms, facets = .~expt, geom=c("bar","linerange"),
-      xlab="Age Group (Years)",ylab="Proportion Inference Consistent") + 
-  geom_hline(yintercept=.5, lty=2) 
+
+p_original <- ggplot(ms) +
+  aes(x = age_group, y = correct, fill = trial.type,
+      ymin = correct - cil, ymax = correct + cih) +
+  stat_identity(geom = "bar", position = position_dodge(.9)) +
+  stat_identity(geom = "linerange", position = position_dodge(.9)) +
+  geom_hline(yintercept = .5, lty = 2) +
+  labs(x = "Age Group (Years)", y = "Proportion Inference Consistent") +
+  facet_wrap("expt")
 
 # l2 <- lmer(correct ~ age.group + type  + (type|subid) + (1 |item),
 #            data=d1,family="binomial")
